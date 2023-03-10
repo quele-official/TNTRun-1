@@ -1,0 +1,14 @@
+name: TNTRun
+version: 1.0
+main: de.quele.TNTRun
+author: quele
+api-version: 1.19
+depend:
+  - GameAPI
+commands:
+  start:
+    description: Startet das Spiel
+    permission: tntrun.start
+    permission-message: Du hast keine Rechte um das Spiel zu starten!
+  setspawn:
+    description: Spawn setzen
