@@ -8,6 +8,8 @@ import eu.hypetime.gameapi.countdown.GameStateManager;
 import eu.hypetime.gameapi.team.TeamPlayer;
 import eu.hypetime.gameapi.team.Teams;
 import eu.hypetime.gameapi.utils.ItemBuilder;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -17,14 +19,14 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.TNT;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockRedstoneEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.plugin.Plugin;
 
@@ -52,7 +54,6 @@ public class EventListener implements Listener {
                 var team1 = value.getTeam();
                 if (team1 != Teams.SPEC.getTeam()) {
                     player1.hidePlayer(GameAPI.getInstance(), player);
-                    player.hidePlayer(GameAPI.getInstance(), player1);
                 }
             }
             player.setGameMode(GameMode.SURVIVAL);
@@ -61,7 +62,7 @@ public class EventListener implements Listener {
             var teleporter = new ItemBuilder(Material.COMPASS).setName("§7» §6Teleporter").toItemStack();
             player.getInventory().setItem(4, teleporter);
             Location spawn = WarpAPI.getSpawnLocation(2);
-            player.teleport(spawn);
+            Bukkit.getScheduler().runTaskLater(TNTRun.getInstance(), () -> player.teleport(spawn), 2);
         }
     }
 
@@ -103,22 +104,30 @@ public class EventListener implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         event.setCancelled(true);
-        registerSpec(event.getPlayer());
     }
 
     @EventHandler
     public void onWeatherChange(WeatherChangeEvent event) {
         event.setCancelled(true);
+        event.getWorld().setStorm(false);
+        event.getWorld().setThundering(false);
+
     }
 
-    //check if player not moving
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
-        if(TNTRun.getInstance().getCountdownManager().getIngameCountdown().isDestroyPhaseActive) {
+        if (TNTRun.getInstance().getCountdownManager().getIngameCountdown().isDestroyPhaseActive) {
             Player player = event.getPlayer();
-            removeBlocks(player);
-            lastMove.put(player, System.currentTimeMillis());
+            TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(player);
+            if (teamPlayer.getTeam() != Teams.SPEC.getTeam()) {
+                removeBlocks(player);
+                lastMove.put(player, System.currentTimeMillis());
+            }
+        }
+        if (event.getPlayer().getLocation().getY() < 0) {
+            registerSpec(event.getPlayer());
+            return;
         }
     }
 
@@ -153,6 +162,32 @@ public class EventListener implements Listener {
         }
     }
 
+
+
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onChat(AsyncChatEvent event) {
+        Player player = event.getPlayer();
+        TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(player);
+        event.setCancelled(true);
+        if (teamPlayer.getTeam() == Teams.SPEC.getTeam()) {
+            Bukkit.getOnlinePlayers().forEach(player1 -> {
+                if (TeamPlayer.getTeamPlayer(player1).getTeam() == Teams.SPEC.getTeam()) {
+                    player1.sendMessage(Component.text(teamPlayer.getTeam().getName() + " §7» §f" + player.getName() + " §8» §7").append(event.message()));
+                }
+            });
+        } else {
+            Bukkit.getOnlinePlayers().forEach(player1 -> {
+                player1.sendMessage(Component.text("§7" + player.getName() + " §8» §7").append(event.message()));
+            });
+        }
+    }
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        registerSpec(player);
+        event.quitMessage(null);
+    }
 
 }
 

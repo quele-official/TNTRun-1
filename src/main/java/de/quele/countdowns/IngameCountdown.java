@@ -1,5 +1,6 @@
 package de.quele.countdowns;
 
+import com.xxmicloxx.NoteBlockAPI.model.Song;
 import com.xxmicloxx.NoteBlockAPI.songplayer.RadioSongPlayer;
 import com.xxmicloxx.NoteBlockAPI.utils.NBSDecoder;
 import de.quele.TNTRun;
@@ -21,6 +22,9 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
@@ -33,7 +37,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class IngameCountdown extends Countdown {
+public class IngameCountdown extends Countdown{
 
     public boolean isDestroyPhaseActive = false;
     File file = new File("plugins/TNTRun/sound.nbs");
@@ -89,14 +93,17 @@ public class IngameCountdown extends Countdown {
             }
             if (isDestroyPhaseActive) {
                 for (Player players : Bukkit.getOnlinePlayers()) {
-                    if (EventListener.lastMove.get(players) + 5000 < System.currentTimeMillis()) {
-                        players.sendTitlePart(TitlePart.TITLE, Component.text("§cDu hast dich zu lange nicht bewegt!"));
-                        players.sendTitlePart(TitlePart.TIMES, Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)));
-                        players.playSound(players.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1, 1);
-                        players.playSound(players.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 5, 20);
-                        players.playSound(players.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1, 1);
-                        EventListener.removeBlocks(players);
-                    }
+                    TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(players);
+                    if (teamPlayer.getTeam() != Teams.SPEC.getTeam()) {
+                        if (EventListener.lastMove.get(players) + 5000 < System.currentTimeMillis()) {
+                            players.sendTitlePart(TitlePart.TITLE, Component.text("§cDu hast dich zu lange nicht bewegt!"));
+                            players.sendTitlePart(TitlePart.TIMES, Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)));
+                            players.playSound(players.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1, 1);
+                            players.playSound(players.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 5, 20);
+                            players.playSound(players.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1, 1);
+                            EventListener.removeBlocks(players);
+                        }
+                    }//Jetzt
                 }
             }
 
@@ -107,11 +114,14 @@ public class IngameCountdown extends Countdown {
         GameAPI.getInstance().getScheduledExecutorService().scheduleWithFixedDelay(() -> {
             if (isActive) {
                 for (Player players : Bukkit.getOnlinePlayers()) {
-                    TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(players);
-                    if (teamPlayer.getTeam() == Teams.SPEC.getTeam()) {
-                        players.setAllowFlight(true);
-                        players.setFlying(true);
+                    if (players != null) {
+                        TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(players);
+                        if (teamPlayer.getTeam() == Teams.SPEC.getTeam()) {
+                            players.setAllowFlight(true);
+                            players.setFlying(true);
+                        }
                     }
+
                     List<Player> ingamePlayers = new ArrayList<>();
                     for (TeamPlayer value : GameAPI.getInstance().getUtils().getTeamPlayers().values()) {
                         if (value.getTeam() != Teams.SPEC.getTeam()) {
@@ -163,15 +173,6 @@ public class IngameCountdown extends Countdown {
             }
 
         }, 20);
-        Bukkit.getScheduler().runTaskLater(TNTRun.getInstance(), () -> {
-           /* EnderDragon enderDragon = (EnderDragon) player.getLocation().getWorld().spawnEntity(player.getLocation(), org.bukkit.entity.EntityType.ENDER_DRAGON);
-            enderDragon.customName(Component.text("§7Sieger§8: §a" + player.getName()));
-            enderDragon.setCustomNameVisible(true);
-            enderDragon.setInvulnerable(true);
-            enderDragon.addPassenger(player);
-            enderDragon.setPhase(EnderDragon.Phase.STRAFING);
-            enderDragon.setAI(true);*/
-        }, 40);
     }
 
     public void noWinner() {
@@ -189,6 +190,18 @@ public class IngameCountdown extends Countdown {
     public void onFinish() {
         this.isActive = false;
         this.isDestroyPhaseActive = false;
+        File folder = new File("plugins/TNTRun/");
+        File[] listOfFiles = folder.listFiles(file -> file.isFile() && file.getName().endsWith(".nbs"));
+
+        Song song;
+
+        if (listOfFiles != null && listOfFiles.length > 0) {
+            File file = listOfFiles[new Random().nextInt(listOfFiles.length)];
+            song = NBSDecoder.parse(file);
+        } else {
+            song = null;
+            // handle case where no .nbs file was found
+        }
         Bukkit.getScheduler().runTaskLater(TNTRun.getInstance(), () -> {
             for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
                 onlinePlayer.spigot().respawn();
@@ -202,8 +215,7 @@ public class IngameCountdown extends Countdown {
                 onlinePlayer.sendTitlePart(TitlePart.TITLE, Component.text("§aDas Spiel ist vorbei!"));
                 onlinePlayer.sendTitlePart(TitlePart.TIMES, Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)));
                 // onlinePlayer.playSound(onlinePlayer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
-                File file = new File("plugins/TNTRun/sound.nbs");
-                var song = NBSDecoder.parse(file);
+                //File file = new File("plugins/TNTRun/sound.nbs");
                 var songplayer = new RadioSongPlayer(song);
                 songplayer.setAutoDestroy(true);
                 songplayer.addPlayer(onlinePlayer);
@@ -220,4 +232,5 @@ public class IngameCountdown extends Countdown {
         GameStateManager.setGameState(GameState.ENDING);
         TNTRun.getInstance().getCountdownManager().getEndingCountdown().start();
     }
+
 }

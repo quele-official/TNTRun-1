@@ -12,11 +12,12 @@ import org.bukkit.entity.Player;
 public class SetSpawnCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
+        if (sender instanceof Player player) {
             if (player.hasPermission("lobby.admin")) {
                 if (args.length != 1) {
                     player.sendMessage(TNTRun.getInstance().getPrefix() + "§7Benutze §e/setspawn <Nummer>");
+                    Player player1 = (Player) sender;
+
                     return true;
                 }
 
