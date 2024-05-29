@@ -35,11 +35,11 @@ import java.util.HashMap;
 public class EventListener implements Listener {
 
     public static void registerSpec(Player player) {
+        var teamP = TeamPlayer.getTeamPlayer(player);
+        var team = teamP.getTeam();
+        var gutils = GameAPI.getInstance().getUtils();
         GameAPI.getInstance().getUtils().respawn(player);
         if (GameStateManager.gameState == GameState.INGAME && TNTRun.getInstance().getCountdownManager().getIngameCountdown().isActive) {
-            var teamP = TeamPlayer.getTeamPlayer(player);
-            var team = teamP.getTeam();
-            var gutils = GameAPI.getInstance().getUtils();
             if (team != Teams.SPEC.getTeam()) {
                 team.removePlayer(teamP);
                 gutils.removeTeamPlayer(player);
@@ -117,9 +117,9 @@ public class EventListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(player);
         if (TNTRun.getInstance().getCountdownManager().getIngameCountdown().isDestroyPhaseActive) {
-            Player player = event.getPlayer();
-            TeamPlayer teamPlayer = TeamPlayer.getTeamPlayer(player);
             if (teamPlayer.getTeam() != Teams.SPEC.getTeam()) {
                 removeBlocks(player);
                 lastMove.put(player, System.currentTimeMillis());
@@ -131,8 +131,8 @@ public class EventListener implements Listener {
         }
     }
 
-    // cancel clicking buttons
-    @EventHandler//Brauchen wir interact
+    // Cancel clicking buttons
+    @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         event.setCancelled(true);
     }
@@ -142,14 +142,14 @@ public class EventListener implements Listener {
     public static void removeBlocks(Player player) {
         Location location = player.getLocation().subtract(0, 1, 0);
 
-        // überprüfe ob der Spieler sich bewegt wenn ja dann return
+        // Checks the player moves if yes then return
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
 
                 Block block = location.clone().add(x, 0, z).getBlock();
 
                 if (block.getType() == Material.SAND || block.getType() == Material.GRAVEL) {
-                    // Überprüfen, ob unter dem Gravel TNT ist
+                    // Checks whether there is TNT under the gravel
                     Block blockBelow = block.getRelative(BlockFace.DOWN);
                     if (blockBelow.getType() == Material.TNT) {
                         Bukkit.getScheduler().runTaskLater(TNTRun.getInstance(), () -> block.setType(Material.GRAY_STAINED_GLASS), 5L);
