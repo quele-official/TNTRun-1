@@ -16,6 +16,7 @@ public class JoinListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         Location spawnLocation = WarpAPI.getSpawnLocation(1);
+        var lobby = TNTRun.getInstance().getCountdownManager().getLobbyCountdown();
         if (!player.hasPlayedBefore()) {
             Bukkit.getScheduler().runTaskLater(TNTRun.getInstance(), () -> player.teleport(spawnLocation), 2);
 
@@ -27,7 +28,6 @@ public class JoinListener implements Listener {
         event.getPlayer().getInventory().clear();
         event.getPlayer().getInventory().setArmorContents(null);
         player.setHealth(20);
-        var lobby = TNTRun.getInstance().getCountdownManager().getLobbyCountdown();
         player.setLevel((int) lobby.time);
         player.setExp(lobby.time / lobby.originalTime);
 
